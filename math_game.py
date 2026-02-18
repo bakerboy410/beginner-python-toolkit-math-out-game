@@ -7,36 +7,29 @@ import tty
 
 # --- Configuration ---
 START_TIME = 6.0
-MIN_TIME = 1.5
-BEEP_THRESHOLD = 3.0  # Seconds remaining to start beeping
+MIN_TIME = 1.2  # Slightly faster floor for "instant" mode
+BEEP_THRESHOLD = 3.0
 
 
 def get_question(score):
     """Generates math questions based on the current score."""
     if score < 10:
-        # Level 1: Single digits
         a, b = random.randint(1, 9), random.randint(1, 9)
     elif score < 15:
-        # Level 2: Mix of single and double digits
         a = random.randint(5, 20)
         b = random.randint(1, 15)
     else:
-        # Level 3: Strictly double digits
-        a, b = random.randint(10, 50), random.randint(10, 50)
+        a = random.randint(10, 60)
+        b = random.randint(10, 60)
 
     op = random.choice(["+", "-"])
     if op == "-":
         if a < b:
-            a, b = b, a  # Keep it simple, no negative answers
+            a, b = b, a
 
     question_text = f"{a} {op} {b}"
     answer = eval(question_text)
     return question_text, str(answer)
-
-
-def flush_input():
-    """Clears any stray keystrokes from the terminal buffer."""
-    termios.tcflush(sys.stdin, termios.TCIFLUSH)
 
 
 def play_game():
@@ -48,6 +41,7 @@ def play_game():
     print("=" * 30)
     for i in range(3, 0, -1):
         print(f"       Starting in... {i}", end="\r")
+        sys.stdout.flush()
         time.sleep(1)
     print("\n       GO!                     ")
 
@@ -57,7 +51,6 @@ def play_game():
         user_answer = ""
         last_beep_second = int(current_allowed_time) + 1
 
-        # UI Refresh and Input Loop
         while True:
             elapsed = time.time() - start_time
             remaining = current_allowed_time - elapsed
@@ -66,58 +59,75 @@ def play_game():
                 print(f"\n\n[!] TIME'S UP! The answer was {correct_answer}.")
                 return score
 
-            # Tension Beep (ASCII Bell)
+            # Tension Beep
             if remaining <= BEEP_THRESHOLD and int(remaining) < last_beep_second:
-                sys.stdout.write("\a")  # System beep
+                sys.stdout.write("\a")
                 sys.stdout.flush()
                 last_beep_second = int(remaining)
 
             # Draw the Time Bar
-            bar_length = 20
-            filled = int((remaining / current_allowed_time) * bar_length)
+            bar_length = 25
+            filled = int(max(0, (remaining / current_allowed_time)) * bar_length)
             bar = "█" * filled + "-" * (bar_length - filled)
 
-            # Use ANSI escape to keep the question static and update the bar
+            # UI Display
             sys.stdout.write(f"\rQUESTION: {question} = {user_answer}")
             sys.stdout.write(f"    TIME: [{bar}] {remaining:.1f}s  ")
             sys.stdout.flush()
 
-            # Check for key presses without pausing the code
-            if select.select([sys.stdin], [], [], 0.05)[0]:
+            # Non-blocking Key Capture
+            if select.select([sys.stdin], [], [], 0.03)[0]:
                 char = sys.stdin.read(1)
-                if char in "\n\r":  # User pressed Enter
-                    break
-                elif char in "\x7f":  # Backspace handling
+
+                if char in "\n\r":  # Enter key
+                    if user_answer == correct_answer:
+                        break
+                    else:
+                        print(
+                            f"\n\n[!] WRONG! The correct answer was {correct_answer}."
+                        )
+                        return score
+                elif char in "\x7f":  # Backspace
                     user_answer = user_answer[:-1]
                 else:
                     user_answer += char
 
-        # Check Answer
-        if user_answer.strip() == correct_answer:
-            score += 1
-            # Adjust complexity: reduce time every correct answer
-            if score > 15:
-                current_allowed_time = max(MIN_TIME, current_allowed_time - 0.2)
-            elif score > 5:
-                current_allowed_time = max(3.0, current_allowed_time - 0.1)
+                # --- INSTANT DETECTION ---
+                if user_answer == correct_answer:
+                    # Brief flash to show success
+                    sys.stdout.write(
+                        f"\rQUESTION: {question} = {user_answer}  CORRECT! "
+                    )
+                    sys.stdout.flush()
+                    time.sleep(0.15)
+                    break
+                elif len(user_answer) >= len(
+                    correct_answer
+                ) and not correct_answer.startswith(user_answer):
+                    # If they typed the wrong digit and reached the length limit
+                    print(f"\n\n[!] WRONG! The correct answer was {correct_answer}.")
+                    return score
 
-            # Quick visual flash for correct answer
-            sys.stdout.write("\r" + " " * 60 + "\r")
-            sys.stdout.flush()
-        else:
-            print(f"\n\n[!] WRONG! The correct answer was {correct_answer}.")
-            return score
+        # Leveling Up
+        score += 1
+        if score > 15:
+            current_allowed_time = max(MIN_TIME, current_allowed_time - 0.2)
+        elif score > 5:
+            current_allowed_time = max(2.5, current_allowed_time - 0.15)
+
+        # Clear line for next question
+        sys.stdout.write("\r" + " " * 70 + "\r")
+        sys.stdout.flush()
 
 
 def main():
     while True:
-        print("\n" + "*" * 30)
-        print("      MATH-OUT TERMINAL")
-        print("*" * 30)
+        print("\n" + "*" * 40)
+        print("      MATH-OUT: INSTANT EDITION")
+        print("*" * 40)
         choice = input("Would you like to play? (Y/N): ").strip().lower()
 
         if choice == "y":
-            # Set terminal to raw mode to capture single keys
             fd = sys.stdin.fileno()
             old_settings = termios.tcgetattr(fd)
             try:
@@ -126,7 +136,8 @@ def main():
             finally:
                 termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
 
-            print(f"\nGAME OVER! Your score: {final_score}")
+            print(f"\nGAME OVER! Your total score: {final_score}")
+            print("-" * 40)
         else:
             print("Thanks for playing! Goodbye.")
             break
