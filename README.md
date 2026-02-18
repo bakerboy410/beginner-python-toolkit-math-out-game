@@ -1,24 +1,29 @@
 # Python Mathematics Game
 
-## Overview
+
+# Overview
 
 This is a simple command-line mathematics game where the player is asked basic addition and subtraction questions. The player has a limited amount of time to answer each question, and the time limit decreases as more questions are answered correctly.
 
-## Objective
+
+# Objective
 
 The objective of this project is to learn Python as a new programming language while improving skills in AI prompting. Generative AI is used to guide the learning process, problem-solving, and implementation of the game.
 
-## Requirements
+
+# Requirements
 
 * Python 3.6 or higher
 * Unix-based Operating System
 * Standard Pthon Library, no dependancies needed
 * ANSI-Compatible Terminal
 
-##Installation
+
+#Installation
 clone the repository
 Naviagate to the ***math_out.py*** file
 Run the file in the terminal, no installation of libraries needed
+
 
 ## Usage
 
@@ -48,9 +53,10 @@ GAME OVER! Your total score: 4
 ****************************************
 Would you like to play? (Y/N): N
 Thanks for playing! Goodbye.
-''
-'
-## Common Issue
+'''
+
+
+# Common Issue
 1. Terminal "Stuck" in Raw Mode
 Issue: If the game is force-closed (e.g., Ctrl+C or a terminal crash), your terminal might stop showing what you type or behave erratically.
 Reason: The game puts the terminal in cbreak mode to capture keys instantly. If it doesn't exit cleanly, it doesn't "reset" the terminal settings.
